@@ -34,8 +34,8 @@ class Config:
     pretrained_model = 'vgg16'
 
     # training
-    epoch = 14
-
+    # epoch = 14
+    epoch = 1
 
     use_adam = False # Use Adam optimizer
     use_chainer = False # try match everything as chainer
@@ -47,7 +47,7 @@ class Config:
     # model
     load_path = None
 
-    caffe_pretrain = False # use caffe pretrained model instead of torchvision
+    caffe_pretrain = True # use caffe pretrained model instead of torchvision
     caffe_pretrain_path = 'checkpoints/vgg16_caffe.pth'
 
     def _parse(self, kwargs):

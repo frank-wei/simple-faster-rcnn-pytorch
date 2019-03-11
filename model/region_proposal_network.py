@@ -51,7 +51,7 @@ class RegionProposalNetwork(nn.Module):
             anchor_scales=anchor_scales, ratios=ratios)
         self.feat_stride = feat_stride
         self.proposal_layer = ProposalCreator(self, **proposal_creator_params)
-        n_anchor = self.anchor_base.shape[0]
+        n_anchor = self.anchor_base.shape[0] #n_anchor=9
         self.conv1 = nn.Conv2d(in_channels, mid_channels, 3, 1, 1)
         self.score = nn.Conv2d(mid_channels, n_anchor * 2, 1, 1, 0)
         self.loc = nn.Conv2d(mid_channels, n_anchor * 4, 1, 1, 0)
@@ -98,29 +98,31 @@ class RegionProposalNetwork(nn.Module):
                 Its shape is :math:`(H W A, 4)`.
 
         """
-        n, _, hh, ww = x.shape
+        n, _, hh, ww = x.shape #[1,512,37,50]
         anchor = _enumerate_shifted_anchor(
             np.array(self.anchor_base),
-            self.feat_stride, hh, ww)
+            self.feat_stride, hh, ww) #anchor=[16650,4]
 
         n_anchor = anchor.shape[0] // (hh * ww)
         h = F.relu(self.conv1(x))
 
-        rpn_locs = self.loc(h)
+        rpn_locs = self.loc(h)#[1,36,37,50]
         # UNNOTE: check whether need contiguous
         # A: Yes
-        rpn_locs = rpn_locs.permute(0, 2, 3, 1).contiguous().view(n, -1, 4)
-        rpn_scores = self.score(h)
+        rpn_locs = rpn_locs.permute(0, 2, 3, 1).contiguous().view(n, -1, 4) #[1,16650,4]
+        rpn_scores = self.score(h) #[1,18,37,50]
         rpn_scores = rpn_scores.permute(0, 2, 3, 1).contiguous()
-        rpn_softmax_scores = F.softmax(rpn_scores.view(n, hh, ww, n_anchor, 2), dim=4)
-        rpn_fg_scores = rpn_softmax_scores[:, :, :, :, 1].contiguous()
-        rpn_fg_scores = rpn_fg_scores.view(n, -1)
+        rpn_softmax_scores = F.softmax(rpn_scores.view(n, hh, ww, n_anchor, 2), dim=4)#[1,37,50,9,2]
+        rpn_fg_scores = rpn_softmax_scores[:, :, :, :, 1].contiguous() #only extract 1 layer(foreground) from dim=4
+        rpn_fg_scores = rpn_fg_scores.view(n, -1)#[1,16650]
         rpn_scores = rpn_scores.view(n, -1, 2)
 
         rois = list()
         roi_indices = list()
         for i in range(n):
-            roi = self.proposal_layer(
+            # the rpn_fg_scores and rpn_locs has same size. After anchor location map to real location and clip and 
+            # remove small bounding boxes. Then sort and select 12000 to NMS, NMS return 2000 (training).
+            roi = self.proposal_layer( 
                 rpn_locs[i].cpu().data.numpy(),
                 rpn_fg_scores[i].cpu().data.numpy(),
                 anchor, img_size,

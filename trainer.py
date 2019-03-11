@@ -9,7 +9,7 @@ from torch import nn
 import torch as t
 from utils import array_tool as at
 from utils.vis_tool import Visualizer
-
+ 
 from utils.config import opt
 from torchnet.meter import ConfusionMeter, AverageValueMeter
 
@@ -90,12 +90,12 @@ class FasterRCNNTrainer(nn.Module):
         n = bboxes.shape[0]
         if n != 1:
             raise ValueError('Currently only batch size 1 is supported.')
-
+        # the imgs are not the fixed size, it is    >=600 and <= 1000
         _, _, H, W = imgs.shape
         img_size = (H, W)
 
         features = self.faster_rcnn.extractor(imgs)
-
+        # rpn process. 
         rpn_locs, rpn_scores, rois, roi_indices, anchor = \
             self.faster_rcnn.rpn(features, img_size, scale)
 
@@ -109,6 +109,10 @@ class FasterRCNNTrainer(nn.Module):
         # Sample RoIs and forward
         # it's fine to break the computation graph of rois, 
         # consider them as constant input
+        # select 128 ROIs and ROI pooling to 7x7
+        
+        # Frank: compare ROI with GT box and argmax the max IOU for each ROI
+        # Then sort ROI choose top 32 and bottom 96
         sample_roi, gt_roi_loc, gt_roi_label = self.proposal_target_creator(
             roi,
             at.tonumpy(bbox),

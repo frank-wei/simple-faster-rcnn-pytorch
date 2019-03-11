@@ -10,7 +10,7 @@ from tqdm import tqdm
 from utils.config import opt
 from data.dataset import Dataset, TestDataset, inverse_normalize
 from model import FasterRCNNVGG16
-from torch.utils import data as data_
+from torch.utils import data as data_ 
 from trainer import FasterRCNNTrainer
 from utils import array_tool as at
 from utils.vis_tool import visdom_bbox
@@ -49,7 +49,7 @@ def eval(dataloader, faster_rcnn, test_num=10000):
 
 def train(**kwargs):
     opt._parse(kwargs)
-
+    print('start================')
     dataset = Dataset(opt)
     print('load data')
     dataloader = data_.DataLoader(dataset, \
@@ -80,7 +80,8 @@ def train(**kwargs):
             img, bbox, label = img.cuda().float(), bbox_.cuda(), label_.cuda()
             trainer.train_step(img, bbox, label, scale)
 
-            if (ii + 1) % opt.plot_every == 0:
+            #if (ii + 1) % opt.plot_every == 0:
+            if 1 == 0:
                 if os.path.exists(opt.debug_file):
                     ipdb.set_trace()
 
@@ -106,13 +107,14 @@ def train(**kwargs):
                 trainer.vis.text(str(trainer.rpn_cm.value().tolist()), win='rpn_cm')
                 # roi confusion matrix
                 trainer.vis.img('roi_cm', at.totensor(trainer.roi_cm.conf, False).float())
+            break #Frank
         eval_result = eval(test_dataloader, faster_rcnn, test_num=opt.test_num)
-        trainer.vis.plot('test_map', eval_result['map'])
+        #trainer.vis.plot('test_map', eval_result['map'])
         lr_ = trainer.faster_rcnn.optimizer.param_groups[0]['lr']
         log_info = 'lr:{}, map:{},loss:{}'.format(str(lr_),
                                                   str(eval_result['map']),
                                                   str(trainer.get_meter_data()))
-        trainer.vis.log(log_info)
+        #trainer.vis.log(log_info)
 
         if eval_result['map'] > best_map:
             best_map = eval_result['map']

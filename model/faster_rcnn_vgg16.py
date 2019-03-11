@@ -25,13 +25,13 @@ def decom_vgg16():
     del classifier[6]
     if not opt.use_drop:
         del classifier[5]
-        del classifier[2]
+        del classifier[2] # remove the dropout layer
     classifier = nn.Sequential(*classifier)
 
     # freeze top4 conv
     for layer in features[:10]:
         for p in layer.parameters():
-            p.requires_grad = False
+            p.requires_grad = False # no need to change in training stage
 
     return nn.Sequential(*features), classifier
 
@@ -59,9 +59,9 @@ class FasterRCNNVGG16(FasterRCNN):
                  ratios=[0.5, 1, 2],
                  anchor_scales=[8, 16, 32]
                  ):
-                 
+        import ipdb; ipdb.set_trace()        
         extractor, classifier = decom_vgg16()
-
+        
         rpn = RegionProposalNetwork(
             512, 512,
             ratios=ratios,
